@@ -163,6 +163,9 @@ static uint32_t main_default_pm_handler(uint32_t a0, uint32_t a1);
 #error Platform must use either ARM_TRUSTED_FW or SEC_MON
 #endif
 
+/* Declarations for fvp_security.c */
+void fvp_security_setup(void);
+
 static void init_canaries(void)
 {
 	size_t n;
@@ -321,6 +324,11 @@ static void main_init_helper(bool is_primary, size_t pos, uint32_t nsec_entry)
 		if (init_teecore() != TEE_SUCCESS)
 			panic();
 		DMSG("Primary CPU switching to normal world boot\n");
+
+
+		{
+			fvp_security_setup();
+		}
 	} else {
 		DMSG("Secondary CPU Switching to normal world boot\n");
 	}
