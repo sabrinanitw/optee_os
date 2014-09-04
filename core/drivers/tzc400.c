@@ -78,6 +78,16 @@ static void tzc_write_action(uint32_t base, tzc_action_t action)
 	write32(action, base + ACTION_OFF);
 }
 
+static uint32_t tzc_read_region_base_low(uint32_t base, uint32_t region)
+{
+	return read32(base + REGION_BASE_LOW_OFF + REGION_NUM_OFF(region));
+}
+
+static uint32_t tzc_read_region_base_high(uint32_t base, uint32_t region)
+{
+	return read32(base + REGION_BASE_HIGH_OFF + REGION_NUM_OFF(region));
+}
+
 static void tzc_write_region_base_low(uint32_t base, uint32_t region, uint32_t val)
 {
 	write32(val, base + REGION_BASE_LOW_OFF + REGION_NUM_OFF(region));
@@ -88,6 +98,16 @@ static void tzc_write_region_base_high(uint32_t base, uint32_t region, uint32_t 
 	write32(val, base + REGION_BASE_HIGH_OFF + REGION_NUM_OFF(region));
 }
 
+static uint32_t tzc_read_region_top_low(uint32_t base, uint32_t region)
+{
+	return read32(base + REGION_TOP_LOW_OFF + REGION_NUM_OFF(region));
+}
+
+static uint32_t tzc_read_region_top_high(uint32_t base, uint32_t region)
+{
+	return read32(base + REGION_TOP_HIGH_OFF + REGION_NUM_OFF(region));
+}
+
 static void tzc_write_region_top_low(uint32_t base, uint32_t region, uint32_t val)
 {
 	write32(val, base + REGION_TOP_LOW_OFF + REGION_NUM_OFF(region));
@@ -96,6 +116,11 @@ static void tzc_write_region_top_low(uint32_t base, uint32_t region, uint32_t va
 static void tzc_write_region_top_high(uint32_t base, uint32_t region, uint32_t val)
 {
 	write32(val, base + REGION_TOP_HIGH_OFF + REGION_NUM_OFF(region));
+}
+
+static uint32_t tzc_read_region_attributes(uint32_t base, uint32_t region)
+{
+	return read32(base + REGION_ATTRIBUTES_OFF + REGION_NUM_OFF(region));
 }
 
 static void tzc_write_region_attributes(uint32_t base, uint32_t region, uint32_t val)
@@ -203,7 +228,7 @@ void tzc_configure_region(uint32_t filters,
 			  tzc_region_attributes_t sec_attr,
 			  uint32_t ns_device_access)
 {
-	uint32_t max_addr;
+	uint64_t max_addr;
 
 	/* Do range checks on filters and regions. */
 	assert(((filters >> controller.num_filters) == 0) &&
@@ -215,6 +240,7 @@ void tzc_configure_region(uint32_t filters,
 	 * the max and expected case.
 	 */
 	max_addr = UINT64_MAX >> (64 - controller.addr_width);
+	DMSG("addr_width: %d", controller.addr_width);
 	if ((region_top > max_addr) || (region_base >= region_top))
 		assert(0);
 
@@ -294,3 +320,49 @@ void tzc_disable_filters(void)
 		tzc_set_gate_keeper(controller.base, filter, 0);
 }
 
+#define	REGION_MAX		8
+static const char* tzc_attr_msg[] = {
+	"TZC_REGION_S_NONE",
+	"TZC_REGION_S_RD",
+	"TZC_REGION_S_WR",
+	"TZC_REGION_S_RDWR"
+};
+
+void tzc_dump_state(void)
+{
+	uint32_t n;
+	uint32_t temp_32reg, temp_32reg_h;
+
+	DMSG("enter");
+	for (n = 0; n <= REGION_MAX; n++) {
+		temp_32reg = tzc_read_region_attributes(controller.base, n);
+		if ( !(temp_32reg & REGION_ATTRIBUTES_F_EN_MASK)) {
+			continue;
+		}
+
+		DMSG("\n");
+		DMSG("region %d", n);
+		temp_32reg = tzc_read_region_base_low(controller.base, n);
+		temp_32reg_h = tzc_read_region_base_high(controller.base, n);
+		DMSG("region_base: 0x%08x%08x", temp_32reg_h, temp_32reg);
+		temp_32reg = tzc_read_region_top_low(controller.base, n);
+		temp_32reg_h = tzc_read_region_top_high(controller.base, n);
+		DMSG("region_top: 0x%08x%08x", temp_32reg_h, temp_32reg);
+		temp_32reg = tzc_read_region_attributes(controller.base, n);
+		DMSG("secure rw: %s", tzc_attr_msg[temp_32reg >> REGION_ATTRIBUTES_SEC_SHIFT]);
+		if (temp_32reg & REGION_ATTRIBUTES_F0_EN_MASK) {
+			DMSG("filter 0 enable");
+		}
+		if (temp_32reg & REGION_ATTRIBUTES_F1_EN_MASK) {
+			DMSG("filter 1 enable");
+		}
+		if (temp_32reg & REGION_ATTRIBUTES_F2_EN_MASK) {
+			DMSG("filter 2 enable");
+		}
+		if (temp_32reg & REGION_ATTRIBUTES_F3_EN_MASK) {
+			DMSG("filter 3 enable");
+		}
+	}
+	DMSG("exit");
+	return;
+}

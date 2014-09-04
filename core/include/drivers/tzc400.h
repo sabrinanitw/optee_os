@@ -129,6 +129,10 @@
 #define REGION_ATTRIBUTES_SEC_SHIFT	30
 #define REGION_ATTRIBUTES_F_EN_SHIFT	0
 #define REGION_ATTRIBUTES_F_EN_MASK	0xf
+#define REGION_ATTRIBUTES_F0_EN_MASK	(1 << 0)
+#define REGION_ATTRIBUTES_F1_EN_MASK	(1 << 1)
+#define REGION_ATTRIBUTES_F2_EN_MASK	(1 << 2)
+#define REGION_ATTRIBUTES_F3_EN_MASK	(1 << 3)
 
 #define REGION_ID_ACCESS_NSAID_WR_EN_SHIFT	16
 #define REGION_ID_ACCESS_NSAID_RD_EN_SHIFT	0
@@ -203,6 +207,7 @@ void tzc_configure_region(uint32_t filters,
 void tzc_enable_filters(void);
 void tzc_disable_filters(void);
 void tzc_set_action(tzc_action_t action);
+void tzc_dump_state(void);
 
 
 #endif /* __TZC400__ */

@@ -332,8 +332,11 @@ static void main_init_helper(bool is_primary, size_t pos, uint32_t nsec_entry)
 
 #if PLATFORM_FLAVOR_IS(fvp)
 		tzc_init();
+		tzc_dump_state();
 		fvp_security_setup();
+		tzc_dump_state();
 #endif
+
 	} else {
 		DMSG("Secondary CPU Switching to normal world boot\n");
 	}
