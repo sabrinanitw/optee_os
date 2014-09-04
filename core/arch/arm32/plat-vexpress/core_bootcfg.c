@@ -218,6 +218,18 @@ static struct map_area bootcfg_stih416_memory[] = {
 	 .cached = true, .secure = false, .rw = true, .exec = false,
 	 },
 
+	{	/* External secure DRAM */
+	 .type = MEM_AREA_NSEC_SHM,
+	 .pa = 0xff000000, .size = SECTION_SIZE,
+	 .cached = true, .secure = true, .rw = true, .exec = true,
+	 },
+
+	{	/* External non-secure DRAM */
+	 .type = MEM_AREA_NSEC_SHM,
+	 .pa = 0xff100000, .size = SECTION_SIZE,
+	 .cached = true, .secure = false, .rw = true, .exec = true,
+	 },
+
 	{	/* UART */
 	 .type = MEM_AREA_IO_NSEC,
 	 .pa = UART0_BASE & ~SECTION_MASK, .size = SECTION_SIZE,
@@ -237,6 +249,18 @@ static struct map_area bootcfg_stih416_memory[] = {
 		 */
 	 .type = MEM_AREA_IO_SEC,
 	 .pa = (GIC_BASE + GICD_OFFSET) & ~SECTION_MASK, .size = SECTION_SIZE,
+	 .device = true, .secure = true, .rw = true,
+	 },
+
+	{	/* TZC400 */
+	 .type = MEM_AREA_IO_SEC,
+	 .pa = TZC_BASE & ~SECTION_MASK, .size = SECTION_SIZE,
+	 .device = true, .secure = true, .rw = true,
+	 },
+
+	{	/* LCD PL111 */
+	 .type = MEM_AREA_IO_SEC,
+	 .pa = LCD_BASE & ~SECTION_MASK, .size = SECTION_SIZE,
 	 .device = true, .secure = true, .rw = true,
 	 },
 #endif

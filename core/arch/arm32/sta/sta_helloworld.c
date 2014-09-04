@@ -37,9 +37,154 @@
 		{ 0xd96a5b40, 0xc3e5, 0x21e3, \
 			{ 0x87, 0x94, 0x10, 0x02, 0xa5, 0xd5, 0xc6, 0x1b } }
 
+#include <drivers/tzc400.h>
+#include <drivers/pl111.h>
+#include <string.h>
+
+/* Used to improve readability for configuring regions. */
+#define FILTER_SHIFT(filter)	(1 << filter)
+
 #define CMD_TRACE	0
 #define CMD_PARAMS	1
 #define CMD_DIRTY_TESTS	2
+#define CMD_DEMO	3
+
+static TEE_Result demo_memory_access_control(uint32_t param_types __unused,
+			TEE_Param params[4])
+{
+	const char* mark_into = "Linaro, hello";
+
+	IMSG("static TA \"%s\" show demo %d", TA_NAME, params[0].value.a);
+	switch (params[0].value.a) {
+	case (1):
+		IMSG("demo 1 shows Grant LCD controller access to framebuffer");
+	
+		/* Disable all filters before programming */
+		tzc_disable_filters();
+	
+		/* Set address 0xff000000 to 0xffffffff can be read by LCD 
+		 * LCD controller bus transaction is secure. */
+		tzc_configure_region(FILTER_SHIFT(2), 4,
+				0xff000000, 0xff000000 + 0x1000000 - 1,
+				TZC_REGION_S_RD,
+				0);
+	
+		/* For demo keep-going, don't raise error nor interrupt */
+		tzc_set_action(TZC_ACTION_NONE);
+	
+		/* Enable filters. */
+		tzc_enable_filters();
+
+		tzc_dump_state();
+		init_pl111(0x100, 0x50, 0xff000000);
+		break;
+	case (2):
+		IMSG("demo 2 shows Deny LCD controller access to framebuffer");
+	
+		/* Disable all filters before programming */
+		tzc_disable_filters();
+	
+		/* Set address 0xff000000 to 0xffffffff can not be read by LCD 
+		 * LCD controller bus transaction is secure. */
+		tzc_configure_region(FILTER_SHIFT(2), 4,
+				0xff000000, 0xff000000 + 0x1000000 - 1,
+				TZC_REGION_S_NONE,
+				0);
+	
+		/* For demo keep-going, don't raise error nor interrupt */
+		tzc_set_action(TZC_ACTION_NONE);
+	
+		/* Enable filters. */
+		tzc_enable_filters();
+
+		tzc_dump_state();
+		init_pl111(0x100, 0x50, 0xff000000);
+		break;
+	case (3):
+		IMSG("demo 3 shows Grant CPU in secure mode read to memory");
+
+		/* Disable all filters before programming */
+		tzc_disable_filters();
+	
+		/* We have mapped 0xff000000 to 0xff100000 as secure DRAM.
+		 * Set address 0xff000000 to 0xff000fff can be access by CPU,
+		 * Set address 0xff001000 to 0xffffffff can not be access by CPU */ 
+		tzc_configure_region(FILTER_SHIFT(0), 3,
+				0xff000000, 0xff000000 + 0x1000 - 1,
+				TZC_REGION_S_RDWR,
+				0);
+
+		tzc_configure_region(FILTER_SHIFT(0), 4,
+				0xff000000 + 0x1000, 0xff000000 + 0x1000000 - 1,
+				TZC_REGION_S_WR,
+				0);
+	
+		/* For demo keep-going, don't raise error nor interrupt */
+		tzc_set_action(TZC_ACTION_NONE);
+	
+		/* Enable filters. */
+		tzc_enable_filters();
+
+		tzc_dump_state();
+		
+		/* Read/Write data into region 3 which is allowed in secure mode */
+		DMSG("Grant CPU in secure mode read to memory");
+		memcpy((void *)0xff000000, mark_into, strlen(mark_into) + 1);
+		DMSG("Write data is done. Write string: %s", (char *)0xff000000);
+
+		
+		/* Only Write data into region 4 which is allowed in secure mode */
+		DMSG("Deny CPU in secure mode read to memory");
+		memcpy((void *)0xff001000, mark_into, strlen(mark_into) + 1);
+		DMSG("Write data is done. Write string: %s", (char *)0xff001000);
+
+		break;
+	case (4):
+		IMSG("demo 4 shows Deny CPU in non-secure mode read to memory");
+
+		/* Disable all filters before programming */
+		tzc_disable_filters();
+	
+		/* We have mapped 0xff100000 to 0xff200000 as non-secure DRAM.
+		 * Set address 0xff100000 to 0xff000fff can be access by CPU,
+		 * Set address 0xff101000 to 0xff110000 can not be access by CPU */ 
+		tzc_configure_region(FILTER_SHIFT(0), 3,
+				0xff100000, 0xff100000 + 0x1000 - 1,
+				TZC_REGION_S_NONE,
+				TZC_REGION_ACCESS_RDWR(9));
+
+		tzc_configure_region(FILTER_SHIFT(0), 4,
+				0xff100000 + 0x1000, 0xff100000 + 0x10000 - 1,
+				TZC_REGION_S_NONE,
+				TZC_REGION_ACCESS_WR(9));
+	
+		/* For demo keep-going, don't raise error nor interrupt */
+		tzc_set_action(TZC_ACTION_NONE);
+	
+		/* Enable filters. */
+		tzc_enable_filters();
+
+		tzc_dump_state();
+		
+		/* Read/Write data into region 3 which is allowed in no-secure mode */
+		DMSG("Grant CPU in non-secure mode read to memory");
+		memcpy((void *)0xff100000, mark_into, strlen(mark_into) + 1);
+		DMSG("Write data is done. Write string: %s", (char *)0xff100000);
+
+		
+		/* Only Write data into region 4 which is allowed in no-secure mode */
+		DMSG("Deny CPU in non-secure mode read to memory");
+		memcpy((void *)0xff101000, mark_into, strlen(mark_into) + 1);
+		DMSG("Write data is done. Write string: %s", (char *)0xff101000);
+
+		break;
+	default:
+		IMSG("No this demo ID yet");
+		break;
+	}
+
+	return TEE_SUCCESS;
+}
 
 static TEE_Result test_trace(uint32_t param_types __unused,
 			TEE_Param params[4] __unused)
@@ -233,6 +378,8 @@ static TEE_Result invoke_command(void *pSessionContext __unused,
 		return test_entry_params(nParamTypes, pParams);
 	case CMD_DIRTY_TESTS:
 		return core_dirty_tests();
+	case CMD_DEMO:
+		return demo_memory_access_control(nParamTypes, pParams);
 	default:
 		break;
 	}

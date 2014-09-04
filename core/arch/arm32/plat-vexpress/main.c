@@ -31,6 +31,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#if PLATFORM_FLAVOR_IS(fvp)
+#include <drivers/tzc400.h>
+#include <drivers/pl111.h>
+#endif
 #include <drivers/gic.h>
 #include <drivers/uart.h>
 #include <sm/sm.h>
@@ -162,6 +166,7 @@ static uint32_t main_default_pm_handler(uint32_t a0, uint32_t a1);
 #else
 #error Platform must use either ARM_TRUSTED_FW or SEC_MON
 #endif
+
 
 static void init_canaries(void)
 {
@@ -321,6 +326,12 @@ static void main_init_helper(bool is_primary, size_t pos, uint32_t nsec_entry)
 		if (init_teecore() != TEE_SUCCESS)
 			panic();
 		DMSG("Primary CPU switching to normal world boot\n");
+
+#if PLATFORM_FLAVOR_IS(fvp)
+		tzc_init();
+		init_lcd_ve();
+#endif
+
 	} else {
 		DMSG("Secondary CPU Switching to normal world boot\n");
 	}
