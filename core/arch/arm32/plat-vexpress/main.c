@@ -31,6 +31,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#if PLATFORM_FLAVOR_IS(fvp)
+#include <drivers/tzc400.h>
+#endif
 #include <drivers/gic.h>
 #include <drivers/uart.h>
 #include <sm/sm.h>
@@ -163,8 +166,10 @@ static uint32_t main_default_pm_handler(uint32_t a0, uint32_t a1);
 #error Platform must use either ARM_TRUSTED_FW or SEC_MON
 #endif
 
+#if PLATFORM_FLAVOR_IS(fvp)
 /* Declarations for fvp_security.c */
 void fvp_security_setup(void);
+#endif
 
 static void init_canaries(void)
 {
@@ -325,10 +330,10 @@ static void main_init_helper(bool is_primary, size_t pos, uint32_t nsec_entry)
 			panic();
 		DMSG("Primary CPU switching to normal world boot\n");
 
-
-		{
-			fvp_security_setup();
-		}
+#if PLATFORM_FLAVOR_IS(fvp)
+		tzc_init();
+		fvp_security_setup();
+#endif
 	} else {
 		DMSG("Secondary CPU Switching to normal world boot\n");
 	}

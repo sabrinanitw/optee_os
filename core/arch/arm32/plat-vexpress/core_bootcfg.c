@@ -239,6 +239,12 @@ static struct map_area bootcfg_stih416_memory[] = {
 	 .pa = (GIC_BASE + GICD_OFFSET) & ~SECTION_MASK, .size = SECTION_SIZE,
 	 .device = true, .secure = true, .rw = true,
 	 },
+
+	{	/* TZC */
+	 .type = MEM_AREA_IO_SEC,
+	 .pa = TZC_BASE & ~SECTION_MASK, .size = SECTION_SIZE,
+	 .device = true, .secure = true, .rw = true,
+	 },
 #endif
 
 	{.type = MEM_AREA_NOTYPE}

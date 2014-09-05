@@ -34,57 +34,81 @@
 #include <io.h>
 #include <drivers/tzc400.h>
 
-static uint32_t tzc_read_build_config(uint64_t base)
+/*******************************************************************************
+ * TrustZone address space controller related constants
+ ******************************************************************************/
+#define TZC400_BASE			0x2a4a0000
+
+/*
+ * The NSAIDs for this platform as used to program the TZC400.
+ */
+
+/* The FVP has 4 bits of NSAIDs. Used with TZC FAIL_ID (ACE Lite ID width) */
+#define FVP_AID_WIDTH			4
+
+/* NSAIDs used by devices in TZC filter 0 on FVP */
+#define FVP_NSAID_DEFAULT		0
+#define FVP_NSAID_PCI			1
+#define FVP_NSAID_VIRTIO		8  /* from FVP v5.6 onwards */
+#define FVP_NSAID_AP			9  /* Application Processors */
+#define FVP_NSAID_VIRTIO_OLD		15 /* until FVP v5.5 */
+
+/* NSAIDs used by devices in TZC filter 2 on FVP */
+#define FVP_NSAID_HDLCD0		2
+#define FVP_NSAID_CLCD			7
+tzc_instance_t controller;
+
+static uint32_t tzc_read_build_config(uint32_t base)
 {
 	return read32(base + BUILD_CONFIG_OFF);
 }
 
-static uint32_t tzc_read_gate_keeper(uint64_t base)
+static uint32_t tzc_read_gate_keeper(uint32_t base)
 {
 	return read32(base + GATE_KEEPER_OFF);
 }
 
-static void tzc_write_gate_keeper(uint64_t base, uint32_t val)
+static void tzc_write_gate_keeper(uint32_t base, uint32_t val)
 {
-	write32(base + GATE_KEEPER_OFF, val);
+	write32(val, base + GATE_KEEPER_OFF);
 }
 
-static void tzc_write_action(uint64_t base, tzc_action_t action)
+static void tzc_write_action(uint32_t base, tzc_action_t action)
 {
-	write32(base + ACTION_OFF, action);
+	write32(action, base + ACTION_OFF);
 }
 
-static void tzc_write_region_base_low(uint64_t base, uint32_t region, uint32_t val)
+static void tzc_write_region_base_low(uint32_t base, uint32_t region, uint32_t val)
 {
-	write32(base + REGION_BASE_LOW_OFF + REGION_NUM_OFF(region), val);
+	write32(val, base + REGION_BASE_LOW_OFF + REGION_NUM_OFF(region));
 }
 
-static void tzc_write_region_base_high(uint64_t base, uint32_t region, uint32_t val)
+static void tzc_write_region_base_high(uint32_t base, uint32_t region, uint32_t val)
 {
-	write32(base + REGION_BASE_HIGH_OFF + REGION_NUM_OFF(region), val);
+	write32(val, base + REGION_BASE_HIGH_OFF + REGION_NUM_OFF(region));
 }
 
-static void tzc_write_region_top_low(uint64_t base, uint32_t region, uint32_t val)
+static void tzc_write_region_top_low(uint32_t base, uint32_t region, uint32_t val)
 {
-	write32(base + REGION_TOP_LOW_OFF + REGION_NUM_OFF(region), val);
+	write32(val, base + REGION_TOP_LOW_OFF + REGION_NUM_OFF(region));
 }
 
-static void tzc_write_region_top_high(uint64_t base, uint32_t region, uint32_t val)
+static void tzc_write_region_top_high(uint32_t base, uint32_t region, uint32_t val)
 {
-	write32(base + REGION_TOP_HIGH_OFF + REGION_NUM_OFF(region), val);
+	write32(val, base + REGION_TOP_HIGH_OFF + REGION_NUM_OFF(region));
 }
 
-static void tzc_write_region_attributes(uint64_t base, uint32_t region, uint32_t val)
+static void tzc_write_region_attributes(uint32_t base, uint32_t region, uint32_t val)
 {
-	write32(base + REGION_ATTRIBUTES_OFF + REGION_NUM_OFF(region), val);
+	write32(val, base + REGION_ATTRIBUTES_OFF + REGION_NUM_OFF(region));
 }
 
-static void tzc_write_region_id_access(uint64_t base, uint32_t region, uint32_t val)
+static void tzc_write_region_id_access(uint32_t base, uint32_t region, uint32_t val)
 {
-	write32(base + REGION_ID_ACCESS_OFF + REGION_NUM_OFF(region), val);
+	write32(val, base + REGION_ID_ACCESS_OFF + REGION_NUM_OFF(region));
 }
 
-static uint32_t tzc_read_component_id(uint64_t base)
+static uint32_t tzc_read_component_id(uint32_t base)
 {
 	uint32_t id;
 
@@ -96,7 +120,7 @@ static uint32_t tzc_read_component_id(uint64_t base)
 	return id;
 }
 
-static uint32_t tzc_get_gate_keeper(uint64_t base, uint8_t filter)
+static uint32_t tzc_get_gate_keeper(uint32_t base, uint8_t filter)
 {
 	uint32_t tmp;
 
@@ -107,7 +131,7 @@ static uint32_t tzc_get_gate_keeper(uint64_t base, uint8_t filter)
 }
 
 /* This function is not MP safe. */
-static void tzc_set_gate_keeper(uint64_t base, uint8_t filter, uint32_t val)
+static void tzc_set_gate_keeper(uint32_t base, uint8_t filter, uint32_t val)
 {
 	uint32_t tmp;
 
@@ -130,29 +154,35 @@ static void tzc_set_gate_keeper(uint64_t base, uint8_t filter, uint32_t val)
 }
 
 
-void tzc_init(tzc_instance_t *controller)
+void tzc_init(void)
 {
 	uint32_t tzc_id, tzc_build;
 
-	assert(controller != NULL);
+	/*
+	 * The driver does some error checking and will assert.
+	 * - Provide base address of device on platform.
+	 * - Provide width of ACE-Lite IDs on platform.
+	 */
+	controller.base = TZC400_BASE;
+	controller.aid_width = FVP_AID_WIDTH;
 
 	/*
 	 * We expect to see a tzc400. Check component ID. The TZC-400 TRM shows
 	 * component ID is expected to be "0xB105F00D".
 	 */
-	tzc_id = tzc_read_component_id(controller->base);
+	tzc_id = tzc_read_component_id(controller.base);
 	if (tzc_id != TZC400_COMPONENT_ID) {
 		DMSG("TZC : Wrong device ID (0x%x).\n", tzc_id);
 		panic();
 	}
 
 	/* Save values we will use later. */
-	tzc_build = tzc_read_build_config(controller->base);
-	controller->num_filters = ((tzc_build >> BUILD_CONFIG_NF_SHIFT) &
+	tzc_build = tzc_read_build_config(controller.base);
+	controller.num_filters = ((tzc_build >> BUILD_CONFIG_NF_SHIFT) &
 			   BUILD_CONFIG_NF_MASK) + 1;
-	controller->addr_width  = ((tzc_build >> BUILD_CONFIG_AW_SHIFT) &
+	controller.addr_width  = ((tzc_build >> BUILD_CONFIG_AW_SHIFT) &
 			   BUILD_CONFIG_AW_MASK) + 1;
-	controller->num_regions = ((tzc_build >> BUILD_CONFIG_NR_SHIFT) &
+	controller.num_regions = ((tzc_build >> BUILD_CONFIG_NR_SHIFT) &
 			   BUILD_CONFIG_NR_MASK) + 1;
 }
 
@@ -166,27 +196,25 @@ void tzc_init(tzc_instance_t *controller)
  * this cannot be changed. It is, however, possible to change some region 0
  * permissions.
  */
-void tzc_configure_region(const tzc_instance_t *controller,
-			  uint32_t filters,
+void tzc_configure_region(uint32_t filters,
 			  uint8_t  region,
 			  uint64_t region_base,
 			  uint64_t region_top,
 			  tzc_region_attributes_t sec_attr,
 			  uint32_t ns_device_access)
 {
-	uint64_t max_addr;
-
-	assert(controller != NULL);
+	uint32_t max_addr;
 
 	/* Do range checks on filters and regions. */
-	assert(((filters >> controller->num_filters) == 0) &&
-	       (region < controller->num_regions));
+	assert(((filters >> controller.num_filters) == 0) &&
+	       (region < controller.num_regions));
+	assert(controller.base != 0);
 
 	/*
 	 * Do address range check based on TZC configuration. A 64bit address is
 	 * the max and expected case.
 	 */
-	max_addr = UINT64_MAX >> (64 - controller->addr_width);
+	max_addr = UINT64_MAX >> (64 - controller.addr_width);
 	if ((region_top > max_addr) || (region_base >= region_top))
 		assert(0);
 
@@ -200,46 +228,42 @@ void tzc_configure_region(const tzc_instance_t *controller,
 	 * All the address registers are 32 bits wide and have a LOW and HIGH
 	 * component used to construct a up to a 64bit address.
 	 */
-	tzc_write_region_base_low(controller->base, region, (uint32_t)(region_base));
-	tzc_write_region_base_high(controller->base, region, (uint32_t)(region_base >> 32));
+	tzc_write_region_base_low(controller.base, region, (uint32_t)(region_base));
+	tzc_write_region_base_high(controller.base, region, (uint32_t)(region_base >> 32));
 
-	tzc_write_region_top_low(controller->base, region, (uint32_t)(region_top));
-	tzc_write_region_top_high(controller->base, region, (uint32_t)(region_top >> 32));
+	tzc_write_region_top_low(controller.base, region, (uint32_t)(region_top));
+	tzc_write_region_top_high(controller.base, region, (uint32_t)(region_top >> 32));
 
 	/* Assign the region to a filter and set secure attributes */
-	tzc_write_region_attributes(controller->base, region,
+	tzc_write_region_attributes(controller.base, region,
 		(sec_attr << REGION_ATTRIBUTES_SEC_SHIFT) | filters);
 
 	/*
 	 * Specify which non-secure devices have permission to access this
 	 * region.
 	 */
-	tzc_write_region_id_access(controller->base, region, ns_device_access);
+	tzc_write_region_id_access(controller.base, region, ns_device_access);
 }
 
 
-void tzc_set_action(const tzc_instance_t *controller, tzc_action_t action)
+void tzc_set_action(tzc_action_t action)
 {
-	assert(controller != NULL);
-
 	/*
 	 * - Currently no handler is provided to trap an error via interrupt
 	 *   or exception.
 	 * - The interrupt action has not been tested.
 	 */
-	tzc_write_action(controller->base, action);
+	tzc_write_action(controller.base, action);
 }
 
 
-void tzc_enable_filters(const tzc_instance_t *controller)
+void tzc_enable_filters(void)
 {
 	uint32_t state;
 	uint32_t filter;
 
-	assert(controller != NULL);
-
-	for (filter = 0; filter < controller->num_filters; filter++) {
-		state = tzc_get_gate_keeper(controller->base, filter);
+	for (filter = 0; filter < controller.num_filters; filter++) {
+		state = tzc_get_gate_keeper(controller.base, filter);
 		if (state) {
 			/* The TZC filter is already configured. Changing the
 			 * programmer's view in an active system can cause
@@ -252,22 +276,21 @@ void tzc_enable_filters(const tzc_instance_t *controller)
 				filter);
 			panic();
 		}
-		tzc_set_gate_keeper(controller->base, filter, 1);
+		assert(controller.base != 0);
+		tzc_set_gate_keeper(controller.base, filter, 1);
 	}
 }
 
 
-void tzc_disable_filters(const tzc_instance_t *controller)
+void tzc_disable_filters(void)
 {
 	uint32_t filter;
-
-	assert(controller != NULL);
 
 	/*
 	 * We don't do the same state check as above as the Gatekeepers are
 	 * disabled after reset.
 	 */
-	for (filter = 0; filter < controller->num_filters; filter++)
-		tzc_set_gate_keeper(controller->base, filter, 0);
+	for (filter = 0; filter < controller.num_filters; filter++)
+		tzc_set_gate_keeper(controller.base, filter, 0);
 }
 

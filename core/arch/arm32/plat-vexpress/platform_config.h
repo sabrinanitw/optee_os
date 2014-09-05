@@ -38,6 +38,7 @@
 #define PLATFORM_LINKER_FORMAT	"elf32-littlearm"
 #define PLATFORM_LINKER_ARCH	arm
 
+#define TZC_BASE		0x2a4a0000
 #define GIC_BASE		0x2c000000
 #define UART0_BASE		0x1c090000
 #define UART1_BASE		0x1c0a0000
