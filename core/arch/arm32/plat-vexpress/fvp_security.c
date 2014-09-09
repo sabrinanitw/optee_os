@@ -129,37 +129,22 @@ void fvp_security_setup(void)
 	 * the MMU translation tables and descriptors.
 	 */
 
-#if 0
-	/* Set to cover the first block of DRAM */
-	tzc_configure_region(FILTER_SHIFT(0), 1,
-			DRAM1_BASE, DRAM1_END - DRAM1_SEC_SIZE,
-			TZC_REGION_S_NONE,
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_DEFAULT) |
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_PCI) |
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_AP) |
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO) |
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO_OLD));
 
-	/* Set to cover the secure reserved region */
-	tzc_configure_region(FILTER_SHIFT(0), 3,
-			(DRAM1_END - DRAM1_SEC_SIZE) + 1 , DRAM1_END,
-			TZC_REGION_S_RDWR,
-			0x0);
+	 /* Set to cover the first block of DRAM */
+	 tzc_configure_region(FILTER_SHIFT(0), 1,
+	 	0x80100000, DRAM1_END - DRAM1_SEC_SIZE,
+	 	TZC_REGION_S_NONE,
+	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_DEFAULT) |
+	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_PCI) |
+	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_AP) |
+	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO) |
+	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO_OLD));
 
-	/* Set to cover the second block of DRAM */
-	tzc_configure_region(FILTER_SHIFT(0), 2,
-			DRAM2_BASE, DRAM2_END, TZC_REGION_S_NONE,
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_DEFAULT) |
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_PCI) |
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_AP) |
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO) |
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO_OLD));
-#else
-	tzc_configure_region(FILTER_SHIFT(1), 1,
-			DRAM1_BASE, DRAM1_END - DRAM1_SEC_SIZE,
-			TZC_REGION_S_WR,
-			0x0);
-#endif
+	 tzc_configure_region(FILTER_SHIFT(0), 4,
+	 		0x80000000, 0x80000000 + 0x100000 - 1,
+	 		TZC_REGION_S_WR,
+	 		0x0);
+
 	/*
 	 * TODO: Interrupts are not currently supported. The only
 	 * options we have are for access errors to occur quietly or to

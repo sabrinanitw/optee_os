@@ -169,6 +169,9 @@ static uint32_t main_default_pm_handler(uint32_t a0, uint32_t a1);
 #if PLATFORM_FLAVOR_IS(fvp)
 /* Declarations for fvp_security.c */
 void fvp_security_setup(void);
+
+const char* mark_into = "Linaro, hello";
+char mark_out[32];
 #endif
 
 static void init_canaries(void)
@@ -335,6 +338,14 @@ static void main_init_helper(bool is_primary, size_t pos, uint32_t nsec_entry)
 		tzc_dump_state();
 		fvp_security_setup();
 		tzc_dump_state();
+
+		/* Write data into region 4 which is allowed in secure mode */
+		memcpy((void *)0x80000000, mark_into, strlen(mark_into)+1);
+		DMSG("Write data is done");
+		DMSG("read data: %s", (char *) 0x80000000);
+		/* Read data from region 4 which is allowed in secure mode */
+		memcpy(mark_out, (void *)0x80000000, strlen(mark_into)+1);
+		DMSG("Read data is done");
 #endif
 
 	} else {

@@ -218,6 +218,12 @@ static struct map_area bootcfg_stih416_memory[] = {
 	 .cached = true, .secure = false, .rw = true, .exec = false,
 	 },
 
+	{	/* External RAM */
+	 .type = MEM_AREA_NSEC_SHM,
+	 .pa = 0x80000000, .size = SECTION_SIZE,
+	 .cached = true, .secure = true, .rw = true, .exec = true,
+	 },
+
 	{	/* UART */
 	 .type = MEM_AREA_IO_NSEC,
 	 .pa = UART0_BASE & ~SECTION_MASK, .size = SECTION_SIZE,
