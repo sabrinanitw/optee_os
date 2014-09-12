@@ -140,10 +140,10 @@ void fvp_security_setup(void)
 	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO) |
 	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO_OLD));
 
-	 tzc_configure_region(FILTER_SHIFT(0), 4,
+	 tzc_configure_region(FILTER_SHIFT(0)|FILTER_SHIFT(2), 4,
 	 		0x80000000, 0x80000000 + 0x100000 - 1,
-	 		TZC_REGION_S_WR,
-	 		0x0);
+	 		TZC_REGION_S_RDWR,
+			TZC_REGION_ACCESS_RDWR(FVP_NSAID_CLCD));
 
 	/*
 	 * TODO: Interrupts are not currently supported. The only
