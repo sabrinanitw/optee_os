@@ -251,6 +251,12 @@ static struct map_area bootcfg_stih416_memory[] = {
 	 .pa = TZC_BASE & ~SECTION_MASK, .size = SECTION_SIZE,
 	 .device = true, .secure = true, .rw = true,
 	 },
+
+	{	/* LCD PL111 */
+	 .type = MEM_AREA_IO_SEC,
+	 .pa = 0x1C1F0000 & ~SECTION_MASK, .size = SECTION_SIZE,
+	 .device = true, .secure = true, .rw = true,
+	 },
 #endif
 
 	{.type = MEM_AREA_NOTYPE}
