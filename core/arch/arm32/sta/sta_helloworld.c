@@ -42,9 +42,12 @@
 #define CMD_DIRTY_TESTS	2
 
 static TEE_Result test_trace(uint32_t param_types __unused,
-			TEE_Param params[4] __unused)
+			TEE_Param params[4])
 {
 	IMSG("static TA \"%s\" says \"Hello world !\"", TA_NAME);
+
+	IMSG("expect params: 0x%x/0x%x",
+			params[0].value.a, params[0].value.b);
 
 	return TEE_SUCCESS;
 }
