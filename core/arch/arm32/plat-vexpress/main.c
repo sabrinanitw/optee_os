@@ -33,6 +33,7 @@
 
 #if PLATFORM_FLAVOR_IS(fvp)
 #include <drivers/tzc400.h>
+#include <drivers/pl111.h>
 #endif
 #include <drivers/gic.h>
 #include <drivers/uart.h>
@@ -336,20 +337,7 @@ static void main_init_helper(bool is_primary, size_t pos, uint32_t nsec_entry)
 
 #if PLATFORM_FLAVOR_IS(fvp)
 		tzc_init();
-		tzc_dump_state();
-		fvp_security_setup();
-
-		tzc_dump_state();
-
-		init_screen(0x80000000, 0x100, 0x20);
-
-		/* Write data into region 4 which is allowed in secure mode */
-		memcpy((void *)0x80000000, mark_into, strlen(mark_into)+1);
-		DMSG("Write data is done");
-		DMSG("read data: %s", (char *) 0x80000000);
-		/* Read data from region 4 which is allowed in secure mode */
-		memcpy(mark_out, (void *)0x80000000, strlen(mark_into)+1);
-		DMSG("Read data is done");
+		init_lcd_ve();
 #endif
 
 	} else {

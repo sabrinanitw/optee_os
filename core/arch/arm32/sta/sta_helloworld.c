@@ -36,6 +36,9 @@
 #define STA_HELLOWORLD_UUID \
 		{ 0xd96a5b40, 0xc3e5, 0x21e3, \
 			{ 0x87, 0x94, 0x10, 0x02, 0xa5, 0xd5, 0xc6, 0x1b } }
+extern void fvp_security_setup(uint32_t addr, uint32_t size, uint32_t attr);
+#include <drivers/tzc400.h>
+#include <drivers/pl111.h>
 
 #define CMD_TRACE	0
 #define CMD_PARAMS	1
@@ -46,8 +49,13 @@ static TEE_Result test_trace(uint32_t param_types __unused,
 {
 	IMSG("static TA \"%s\" says \"Hello world !\"", TA_NAME);
 
-	IMSG("expect params: 0x%x/0x%x",
-			params[0].value.a, params[0].value.b);
+	IMSG("expect params: 0x%x/0x%x, %d",
+			params[0].value.a, params[0].value.b,
+			params[1].value.a);
+
+	fvp_security_setup(params[0].value.a, params[0].value.b, params[1].value.a);
+	tzc_dump_state();
+	init_pl111(0x100, 0x50, params[0].value.a);
 
 	return TEE_SUCCESS;
 }

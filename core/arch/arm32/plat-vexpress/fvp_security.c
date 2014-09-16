@@ -71,13 +71,12 @@
 #define DRAM2_BASE		0x880000000ull
 #define DRAM2_SIZE		0x780000000ull
 #define DRAM2_END		(DRAM2_BASE + DRAM2_SIZE - 1)
+void fvp_security_setup(uint32_t addr, uint32_t size, uint32_t attr);
 /*******************************************************************************
  * Above DEFINE should be fixed
  ******************************************************************************/
 
 
-/* Declarations for fvp_security.c */
-extern void fvp_security_setup(void);
 
 /* Used to improve readability for configuring regions. */
 #define FILTER_SHIFT(filter)	(1 << filter)
@@ -89,19 +88,13 @@ extern void fvp_security_setup(void);
  * Might want to enable interrupt on violations when supported?
  */
 
-void fvp_security_setup(void)
+void fvp_security_setup(uint32_t addr, uint32_t size, uint32_t attr)
 {
 
 	/*
 	 * The TrustZone controller controls access to main DRAM. Give
 	 * full NS access for the moment to use with OS.
 	 */
-#if 0
-	DMSG("Configuring TrustZone Controller\n");
-
-	tzc_init(&controller);
-	DMSG("Done tzc_init\n");
-#endif
 
 	/*
 	 * Currently only filters 0 and 2 are connected on Base FVP.
@@ -131,19 +124,16 @@ void fvp_security_setup(void)
 
 
 	 /* Set to cover the first block of DRAM */
-	 tzc_configure_region(FILTER_SHIFT(0), 1,
-	 	0x80100000, DRAM1_END - DRAM1_SEC_SIZE,
-	 	TZC_REGION_S_NONE,
-	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_DEFAULT) |
-	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_PCI) |
-	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_AP) |
-	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO) |
-	 	TZC_REGION_ACCESS_RDWR(FVP_NSAID_VIRTIO_OLD));
+	 tzc_configure_region(FILTER_SHIFT(0), 3,
+		addr + size, DRAM1_END,
+		TZC_REGION_S_NONE,
+		0);
 
-	 tzc_configure_region(FILTER_SHIFT(0)|FILTER_SHIFT(2), 4,
-	 		0x80000000, 0x80000000 + 0x100000 - 1,
-	 		TZC_REGION_S_RDWR,
-			TZC_REGION_ACCESS_RDWR(FVP_NSAID_CLCD));
+	/* Set for LCD; Fliter2 */
+	 tzc_configure_region(FILTER_SHIFT(2), 4,
+		addr, addr + size - 1,
+		attr,
+		TZC_REGION_ACCESS_RDWR(7));
 
 	/*
 	 * TODO: Interrupts are not currently supported. The only
