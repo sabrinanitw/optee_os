@@ -140,7 +140,7 @@ void fvp_security_setup(uint32_t addr, uint32_t size, uint32_t attr)
 	 * options we have are for access errors to occur quietly or to
 	 * cause an exception. We choose to cause an exception.
 	 */
-	tzc_set_action(TZC_ACTION_ERR);
+	tzc_set_action(TZC_ACTION_NONE);
 	DMSG("Done tzc_set_action\n");
 
 	/* Enable filters. */
